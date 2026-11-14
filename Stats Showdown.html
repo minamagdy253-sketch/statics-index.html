@@ -1,0 +1,758 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Stats Showdown</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Cairo:wght@400;600;700&display=swap">
+<style>
+/* Layout concept: a dark card table. Deck tiles on the table, one playing card at a time that turns over to show the worked explanation. Committed to a single look (felt table, card stock), so no light variant. */
+:root {
+  --table: #0F2420;
+  --table-2: #1A3A31;
+  --felt-line: #2B5245;
+  --card: #F8F8F3;
+  --ink: #15211E;
+  --ink-2: #4A5C56;
+  --rule: #D9DFD7;
+  --text: #EAF1EC;
+  --text-2: #9FB8AD;
+  --club: #3BB27F;
+  --club-d: #1D7752;
+  --diamond: #E8A23A;
+  --diamond-d: #94560A;
+  --spade: #B38BFF;
+  --spade-d: #6842C4;
+  --heart: #F0707A;
+  --heart-d: #B33A45;
+  --good: #17794E;
+  --good-l: #3DBE86;
+  --bad: #C0392F;
+  --bad-l: #E5645A;
+  --display: 'Bricolage Grotesque', 'Cairo', system-ui, sans-serif;
+  --body: 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--table);
+  background-image: radial-gradient(900px 520px at 50% -140px, var(--table-2), transparent 70%);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 720px; margin-inline: auto; }
+button { font: inherit; }
+button:focus-visible, summary:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+/* Home */
+.hero { padding: 18px 0 22px; }
+.kicker { margin: 0 0 8px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+h1 { margin: 0 0 12px; font-family: var(--display); font-weight: 800; font-size: clamp(36px, 8vw, 56px); line-height: 1; letter-spacing: -.02em; text-wrap: balance; }
+.sub { margin: 0 0 8px; max-width: 62ch; color: var(--text-2); }
+.sub.ar { color: var(--text); opacity: .85; }
+.decks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.tile {
+  appearance: none; border: 0; cursor: pointer; text-align: start;
+  background: var(--card); color: var(--ink);
+  border-radius: 18px; padding: 16px 16px 14px;
+  display: grid; gap: 4px; align-content: start;
+  position: relative; overflow: hidden; min-height: 168px;
+  transition: transform .16s ease;
+  box-shadow: 0 16px 32px -14px rgba(0,0,0,.6);
+}
+.tile:hover { transform: translateY(-3px) rotate(-.4deg); }
+.tile::after { content: attr(data-suit); position: absolute; right: -6px; bottom: -26px; font-size: 130px; line-height: 1; color: var(--c); opacity: .16; pointer-events: none; }
+.tile .nm { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1.05; color: var(--cd); }
+.tile .nm-ar { font-weight: 700; color: var(--ink-2); }
+.tile .bl { font-size: 14px; color: var(--ink-2); margin-top: 6px; }
+.tile .bl-ar { font-size: 13px; color: var(--ink-2); }
+.tile .meta { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink); display: flex; flex-wrap: wrap; gap: 4px 12px; position: relative; z-index: 1; }
+.t-easy { --c: var(--club); --cd: var(--club-d); }
+.t-medium { --c: var(--diamond); --cd: var(--diamond-d); }
+.t-hard { --c: var(--spade); --cd: var(--spade-d); }
+.t-climb { --c: var(--heart); --cd: var(--heart-d); }
+.foot { margin: 20px 0 0; font-size: 13px; color: var(--text-2); }
+
+/* Play */
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ghost { appearance: none; border: 1.5px solid var(--felt-line); background: transparent; color: var(--text); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 600; }
+.ghost:hover { border-color: var(--text-2); }
+.stats { display: flex; gap: 18px; color: var(--text-2); font-weight: 600; }
+.stats b { color: var(--text); font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; margin-inline-start: 4px; }
+.pips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; }
+.pip { width: 20px; height: 28px; border-radius: 5px; border: 1.5px solid var(--felt-line); }
+.pip.lvl-easy { border-color: color-mix(in srgb, var(--club) 55%, transparent); }
+.pip.lvl-medium { border-color: color-mix(in srgb, var(--diamond) 55%, transparent); }
+.pip.lvl-hard { border-color: color-mix(in srgb, var(--spade) 55%, transparent); }
+.pip.cur { border-color: var(--text); }
+.pip.r { background: var(--good-l); border-color: var(--good-l); }
+.pip.w { background: var(--bad-l); border-color: var(--bad-l); }
+
+.stage { perspective: 1400px; }
+.card {
+  position: relative; overflow: hidden;
+  background: var(--card); color: var(--ink);
+  border-radius: 20px; padding: 20px 20px 22px;
+  box-shadow: 0 20px 44px -14px rgba(0,0,0,.65);
+}
+.card::after { content: attr(data-suit); position: absolute; right: -8px; bottom: -34px; font-size: 190px; line-height: 1; color: var(--c); opacity: .07; pointer-events: none; }
+.lvl-easy { --c: var(--club); --cd: var(--club-d); }
+.lvl-medium { --c: var(--diamond); --cd: var(--diamond-d); }
+.lvl-hard { --c: var(--spade); --cd: var(--spade-d); }
+.deal { animation: deal .34s ease-out; }
+.turn-out { animation: turnOut .17s ease-in forwards; }
+.turn-in { animation: turnIn .2s ease-out; }
+@keyframes deal { from { opacity: 0; transform: translateY(22px) rotate(-1.2deg); } to { opacity: 1; transform: none; } }
+@keyframes turnOut { to { transform: rotateY(90deg); } }
+@keyframes turnIn { from { transform: rotateY(-90deg); } to { transform: rotateY(0); } }
+
+.corner { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--cd); margin-bottom: 14px; }
+.q-en { margin: 0; font-size: 20px; line-height: 1.38; font-weight: 600; text-wrap: pretty; }
+.q-ar { margin: 8px 0 0; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
+.opts { display: grid; gap: 10px; margin-top: 18px; position: relative; z-index: 1; }
+.opt {
+  appearance: none; width: 100%; cursor: pointer; text-align: start;
+  display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start;
+  background: #fff; color: var(--ink);
+  border: 1.5px solid var(--rule); border-radius: 12px; padding: 10px 12px;
+  transition: border-color .12s, background .12s, opacity .12s;
+}
+.opt:hover:not(:disabled) { border-color: var(--cd); background: #FCFCFA; }
+.opt:disabled { cursor: default; color: var(--ink); }
+.opt .k { width: 28px; height: 28px; border-radius: 8px; background: var(--rule); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 14px; }
+.opt .en { display: block; font-weight: 600; }
+.opt .ar { display: block; margin-top: 1px; font-size: 14px; color: var(--ink-2); }
+.opt.right { border-color: var(--good); background: #E6F4EC; }
+.opt.right .k { background: var(--good); color: #fff; }
+.opt.wrong { border-color: var(--bad); background: #FBE9E7; }
+.opt.wrong .k { background: var(--bad); color: #fff; }
+.opt.dim { opacity: .55; }
+
+/* Back of the card */
+.banner { margin: -20px -20px 16px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #fff; font-family: var(--display); font-weight: 800; font-size: 22px; }
+.banner.good { background: var(--good); }
+.banner.bad { background: var(--bad); }
+.banner .gain { font-family: var(--body); font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.yours { margin: 0 0 4px; color: var(--ink-2); font-size: 15px; }
+.h { display: flex; justify-content: space-between; gap: 12px; margin: 16px 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--cd); }
+.h span[lang="ar"] { letter-spacing: 0; font-size: 14px; }
+.ans { margin: 0; font-weight: 700; font-size: 18px; }
+.ans .ar { display: block; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.ex { margin: 0; }
+.ar-note { margin-top: 8px; background: #EEF2ED; border-radius: 12px; padding: 10px 12px; line-height: 1.7; }
+.steps { display: grid; gap: 4px; background: var(--table); color: #DCEBE2; border-radius: 12px; padding: 12px 14px; font-family: var(--mono); font-size: 14px; line-height: 1.5; direction: ltr; }
+.step { overflow-wrap: anywhere; }
+.step::before { content: "› "; color: var(--good-l); }
+.next {
+  appearance: none; border: 0; cursor: pointer; width: 100%; margin-top: 20px;
+  background: var(--cd); color: #fff; border-radius: 12px; padding: 13px 16px;
+  font-weight: 700; font-size: 16px; position: relative; z-index: 1;
+}
+.next:hover { filter: brightness(1.08); }
+.card button:focus-visible { outline-color: var(--ink); }
+
+/* Results */
+.res { text-align: center; padding-block: 28px 24px; }
+.res .big { font-family: var(--display); font-weight: 800; font-size: clamp(64px, 18vw, 96px); line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.res .big small { font-size: 22px; font-weight: 700; color: var(--ink-2); margin-inline-start: 6px; }
+.res .rank { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--cd); margin: 8px 0 0; }
+.res .rank-ar { font-weight: 700; color: var(--ink-2); margin: 0 0 10px; }
+.res .line { margin: 2px 0; color: var(--ink-2); font-weight: 600; }
+.newbest { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 99px; background: var(--good); color: #fff; font-weight: 700; font-size: 13px; }
+.actions { display: grid; gap: 10px; margin: 16px 0 0; }
+.btn { appearance: none; border: 0; cursor: pointer; background: var(--card); color: var(--ink); border-radius: 12px; padding: 13px 16px; font-weight: 700; }
+.btn.alt { background: transparent; color: var(--text); border: 1.5px solid var(--felt-line); }
+.sec-h { margin: 28px 0 10px; font-family: var(--display); font-weight: 800; font-size: 22px; display: flex; justify-content: space-between; gap: 12px; }
+.sec-h span[lang="ar"] { font-family: var(--body); font-size: 18px; }
+.review { background: var(--card); color: var(--ink); border-radius: 14px; padding: 2px 14px; }
+.review details { border-bottom: 1px solid var(--rule); padding: 10px 0; }
+.review details:last-child { border-bottom: 0; }
+.review summary { cursor: pointer; font-weight: 600; list-style-position: outside; margin-inline-start: 18px; }
+.review .inner { padding: 6px 0 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap"><main id="app"></main></div>
+
+<script>
+(function () {
+  'use strict';
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var app = document.getElementById('app');
+
+  /* ---------- helpers ---------- */
+  function el(tag, props) {
+    var e = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (k === 'class') e.className = v;
+        else if (k === 'text') e.textContent = v;
+        else if (k.indexOf('on') === 0) e.addEventListener(k.slice(2), v);
+        else if (v !== false && v != null) e.setAttribute(k, v);
+      });
+    }
+    var kids = Array.prototype.slice.call(arguments, 2);
+    kids.forEach(function add(c) {
+      if (Array.isArray(c)) { c.forEach(add); return; }
+      if (c == null || c === false) return;
+      e.append(c.nodeType ? c : document.createTextNode(String(c)));
+    });
+    return e;
+  }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function getBest(mode) {
+    try { return Number(localStorage.getItem('statsShowdown.best.' + mode)) || 0; } catch (e) { return 0; }
+  }
+  function setBest(mode, v) {
+    try { localStorage.setItem('statsShowdown.best.' + mode, String(v)); } catch (e) {}
+  }
+
+  /* ---------- questions ---------- */
+  var QS = [];
+  function Q(lvl, q, qa, o, a, ex, exa, steps) {
+    QS.push({ id: QS.length, lvl: lvl, q: q, qa: qa, o: o, a: a, ex: ex, exa: exa, steps: steps || [] });
+  }
+
+  /* EASY */
+  Q('easy',
+    "A report only organizes, summarizes and presents the grades of 5 students. Which type of statistics is this?",
+    "تقرير بينظّم ويلخّص ويعرض درجات 5 طلاب بس. ده أنهي نوع من الإحصاء؟",
+    [["Descriptive statistics", "الإحصاء الوصفي"], ["Inferential statistics", "الإحصاء الاستدلالي"], ["Sampling error", "خطأ المعاينة"], ["Point estimation", "التقدير النقطي"]], 0,
+    "Organize, summarize and present are the keywords of Descriptive Statistics. We only describe the data we collected. We do not predict anything about a bigger group.",
+    "كلمات organize وsummarize وpresent معناها إحصاء وصفي. إحنا بس بنوصف البيانات اللي جمعناها، ومش بنتوقع حاجة عن مجموعة أكبر.");
+
+  Q('easy',
+    "A university measures 100 students and uses the result to estimate the average study time of all 10,000 students. What is this?",
+    "جامعة قاست ساعات المذاكرة لـ100 طالب وبتستخدم النتيجة علشان تقدّر متوسط ساعات المذاكرة لكل الـ10,000 طالب. ده إيه؟",
+    [["Inferential statistics", "الإحصاء الاستدلالي"], ["Descriptive statistics", "الإحصاء الوصفي"], ["Census", "حصر شامل"], ["Parameter", "معلمة"]], 0,
+    "Estimate, predict and generalize are the keywords of Inferential Statistics. We use a sample to draw a conclusion about the whole population.",
+    "كلمات estimate وpredict وgeneralize معناها إحصاء استدلالي. بنستخدم العينة علشان نوصل لنتيجة عن المجتمع كله.");
+
+  Q('easy',
+    "Which symbol represents the POPULATION mean?",
+    "أنهي رمز بيمثّل متوسط المجتمع (Population Mean)؟",
+    [["μ", "متوسط المجتمع"], ["x̄", "متوسط العينة"], ["σ", "الانحراف المعياري للمجتمع"], ["p̂", "نسبة العينة"]], 0,
+    "μ is a parameter: it describes the whole population. x̄ and p̂ are statistics: they are calculated from a sample. σ is the population standard deviation.",
+    "μ هي معلمة (parameter) بتوصف المجتمع كله. أما x̄ وp̂ فهما إحصاءات (statistics) بنحسبها من العينة. وσ هي الانحراف المعياري للمجتمع.");
+
+  Q('easy',
+    "The average age of a sample of 100 students is 19.5 years. This number is a…",
+    "متوسط عمر عينة من 100 طالب = 19.5 سنة. الرقم ده بيسمّى…",
+    [["Statistic", "إحصاء عينة"], ["Parameter", "معلمة مجتمع"], ["Population", "مجتمع"], ["Stratum", "طبقة"]], 0,
+    "A number calculated from a sample is a statistic (here x̄ = 19.5). A parameter describes the whole population (μ). A statistic changes from sample to sample, while a parameter is a fixed value.",
+    "أي رقم بنحسبه من العينة اسمه statistic (هنا x̄ = 19.5). أما المعلمة parameter فبتوصف المجتمع كله (μ). الإحصاء بيتغير من عينة لعينة، والمعلمة قيمة ثابتة.");
+
+  Q('easy',
+    "A company has 1,000 employees. After a random start, the analyst picks every 10th employee. Which sampling method is this?",
+    "شركة فيها 1,000 موظف. المحلل بدأ من نقطة عشوائية وبعدها اختار كل موظف رقم 10. دي أنهي طريقة معاينة؟",
+    [["Systematic sampling", "العينة المنتظمة"], ["Simple random sampling", "العينة العشوائية البسيطة"], ["Stratified sampling", "العينة الطبقية"], ["Cluster sampling", "العينة العنقودية"]], 0,
+    "A random starting point followed by every k-th member is Systematic Sampling. Here k = 10, and k = N / n.",
+    "نقطة بداية عشوائية وبعدها كل عنصر رقم k معناها Systematic Sampling. هنا k = 10، والقانون k = N / n.");
+
+  Q('easy',
+    "A random number generator picks 100 students out of 1,000, so every student has the same chance of being chosen. Which method is this?",
+    "برنامج أرقام عشوائية اختار 100 طالب من 1,000، وكل طالب كان عنده نفس فرصة الاختيار. دي أنهي طريقة؟",
+    [["Simple random sampling", "العينة العشوائية البسيطة"], ["Systematic sampling", "العينة المنتظمة"], ["Stratified sampling", "العينة الطبقية"], ["Cluster sampling", "العينة العنقودية"]], 0,
+    "Equal chance for every individual is the keyword of Simple Random Sampling.",
+    "كلمة فرصة متساوية لكل فرد معناها Simple Random Sampling.");
+
+  Q('easy',
+    "A university splits its students into Commerce, Engineering and Medical groups, then draws a sample from EVERY group. This is…",
+    "جامعة قسّمت الطلاب لمجموعات: تجارة وهندسة وطب، وبعدين سحبت عينة من كل مجموعة. دي…",
+    [["Stratified sampling", "العينة الطبقية"], ["Cluster sampling", "العينة العنقودية"], ["Simple random sampling", "العينة العشوائية البسيطة"], ["Systematic sampling", "العينة المنتظمة"]], 0,
+    "Divide the population into subgroups (strata) and sample from every one of them: that is Stratified Sampling. Every group is represented.",
+    "تقسيم المجتمع لمجموعات فرعية (strata) وسحب عينة من كل مجموعة معناه Stratified Sampling. كل المجموعات ممثَّلة.");
+
+  Q('easy',
+    "A university has 20 classes. Four classes are chosen at random, and students are sampled only from those four classes. This is…",
+    "جامعة فيها 20 فصل. اتختار 4 فصول عشوائياً، وبعدها اتسحبت عينة من طلاب الـ4 فصول دول بس. دي…",
+    [["Cluster sampling", "العينة العنقودية"], ["Stratified sampling", "العينة الطبقية"], ["Simple random sampling", "العينة العشوائية البسيطة"], ["Systematic sampling", "العينة المنتظمة"]], 0,
+    "Randomly selecting some groups and then sampling inside them is Cluster Sampling. Stratified is different: it samples from EVERY group.",
+    "اختيار بعض المجموعات عشوائياً وبعدين السحب من جواها هو Cluster Sampling. أما Stratified فبياخد عينة من كل المجموعات.");
+
+  Q('easy',
+    "Which statement about the normal distribution is TRUE?",
+    "أنهي جملة عن التوزيع الطبيعي صح؟",
+    [["Mean = Median = Mode", "المتوسط = الوسيط = المنوال"], ["Mean > Median > Mode", "المتوسط > الوسيط > المنوال"], ["The tails touch the x-axis", "الأطراف بتلمس المحور الأفقي"], ["The total area under the curve is 100", "المساحة الكلية تحت المنحنى = 100"]], 0,
+    "The normal curve is bell-shaped and symmetrical, so Mean = Median = Mode. The tails approach the x-axis but never touch it, and the total area equals 1 (that is, 100%).",
+    "المنحنى الطبيعي شكله جرس ومتماثل، علشان كده المتوسط = الوسيط = المنوال. الأطراف بتقرب من المحور الأفقي لكن مش بتلمسه، والمساحة الكلية = 1 (يعني 100%).");
+
+  Q('easy',
+    "The standard normal distribution Z ~ N(0, 1) has…",
+    "التوزيع الطبيعي المعياري Z ~ N(0, 1) فيه…",
+    [["μ = 0 and σ = 1", "متوسط 0 وانحراف معياري 1"], ["μ = 1 and σ = 0", "متوسط 1 وانحراف معياري 0"], ["μ = 0 and σ = 0", "متوسط 0 وانحراف معياري 0"], ["μ = 1 and σ = 1", "متوسط 1 وانحراف معياري 1"]], 0,
+    "N(0, 1) means mean 0 and standard deviation 1. Any normal value can be converted to Z using Z = (X − μ) / σ.",
+    "N(0, 1) معناها متوسط = 0 وانحراف معياري = 1. وأي قيمة طبيعية نحوّلها لـ Z بالقانون Z = (X − μ) / σ.");
+
+  Q('easy',
+    "A factory tests how long light bulbs last. Why does it test a sample instead of every bulb?",
+    "مصنع بيختبر عمر اللمبات. ليه بيختبر عينة بس مش كل اللمبات؟",
+    [["The test destroys the item (destructive testing)", "الاختبار بيتلف اللمبة"], ["A census is never allowed", "الحصر الشامل ممنوع دايماً"], ["All bulbs are identical", "كل اللمبات متطابقة"], ["A sample is always more accurate than a census", "العينة دايماً أدق من الحصر الشامل"]], 0,
+    "Testing a bulb until it burns out destroys it, so testing everything would leave nothing to sell. Time and cost are other reasons to sample, but destructive testing is the key one here.",
+    "اختبار اللمبة لحد ما تحرق بيتلفها، فلو اختبرنا الكل مش هيفضل حاجة نبيعها. الوقت والتكلفة أسباب تانية للعينة، لكن السبب الأساسي هنا هو الاختبار الإتلافي.");
+
+  /* MEDIUM */
+  Q('medium',
+    "A school has 1,200 students and needs a systematic sample of 60. What is the sampling interval k?",
+    "مدرسة فيها 1,200 طالب وعايزة عينة منتظمة حجمها 60. كام الفاصل k؟",
+    [["12"], ["20"], ["60"], ["72"]], 1,
+    "Divide the population size by the sample size. We then pick every 20th student after a random start.",
+    "بنقسم حجم المجتمع على حجم العينة. وبعدها بنختار كل طالب رقم 20 بعد نقطة بداية عشوائية.",
+    ["k = N / n", "k = 1200 / 60 = 20"]);
+
+  Q('medium',
+    "A sample of 50 is drawn by proportional allocation from strata of sizes 500, 300 and 200. How many units come from the stratum of 300?",
+    "سحبنا عينة حجمها 50 بالتوزيع التناسبي من طبقات حجمها 500 و300 و200. كام عنصر هييجي من الطبقة اللي حجمها 300؟",
+    [["10"], ["15"], ["17"], ["30"]], 1,
+    "Each stratum gets the same share of the sample as it has in the population: 300 is 30% of 1000, and 30% of 50 is 15. Equal allocation would give about 17 to each stratum.",
+    "كل طبقة بتاخد من العينة نفس نسبتها في المجتمع: 300 هي 30% من 1000، و30% من 50 = 15. التوزيع المتساوي كان هيدّي كل طبقة حوالي 17.",
+    ["N = 500 + 300 + 200 = 1000", "n_i = n × N_i / N", "n_i = 50 × 300 / 1000 = 15"]);
+
+  Q('medium',
+    "Exam scores have mean 70 and standard deviation 5. A student scores 85. What is the Z-score?",
+    "درجات الامتحان متوسطها 70 وانحرافها المعياري 5. طالب جاب 85. كام الـ Z؟",
+    [["3"], ["15"], ["1.5"], ["0.33"]], 0,
+    "The score is 3 standard deviations above the mean. A positive Z means above the mean. Answering 15 means forgetting to divide by σ.",
+    "الدرجة أعلى من المتوسط بمقدار 3 انحرافات معيارية. Z موجب معناه أعلى من المتوسط. الإجابة 15 معناها إنك نسيت تقسم على σ.",
+    ["Z = (X − μ) / σ", "Z = (85 − 70) / 5", "Z = 15 / 5 = 3"]);
+
+  Q('medium',
+    "The population standard deviation is σ = 30 and the sample size is n = 25. What is the standard error of the sample mean?",
+    "الانحراف المعياري للمجتمع σ = 30 وحجم العينة n = 25. كام الخطأ المعياري لمتوسط العينة؟",
+    [["1.2"], ["6"], ["15"], ["30"]], 1,
+    "Divide σ by the square root of n, not by n itself. (30 / 25 = 1.2 is the classic mistake.) A bigger sample gives a smaller standard error.",
+    "بنقسم σ على الجذر التربيعي لـ n مش على n نفسها. (30 / 25 = 1.2 هي الغلطة المشهورة.) كل ما العينة تكبر، الخطأ المعياري بيقل.",
+    ["SE = σ / √n", "SE = 30 / √25 = 30 / 5 = 6"]);
+
+  Q('medium',
+    "In a survey of 150 students, 45 prefer online learning. What is the sample proportion p̂?",
+    "في استطلاع على 150 طالب، 45 منهم بيفضلوا التعلم أونلاين. كام نسبة العينة p̂؟",
+    [["0.30"], ["0.33"], ["0.45"], ["3.33"]], 0,
+    "Divide the number of units with the characteristic (x) by the sample size (n).",
+    "بنقسم عدد اللي عندهم الصفة (x) على حجم العينة (n).",
+    ["p̂ = x / n", "p̂ = 45 / 150 = 0.30 = 30%"]);
+
+  Q('medium',
+    "A population has N = 4 elements. How many ordered samples of size n = 2 are possible WITH replacement?",
+    "مجتمع فيه N = 4 عناصر. كام عينة مرتبة حجمها n = 2 ممكن نسحبها مع الإرجاع؟",
+    [["6"], ["8"], ["12"], ["16"]], 3,
+    "With replacement every draw has all N choices, so we get N^n. Without replacement the population shrinks each time: N × (N − 1) = 12.",
+    "مع الإرجاع كل سحبة عندها N اختيار، فالناتج N^n. وبدون إرجاع المجتمع بيقل في كل سحبة: N × (N − 1) = 12.",
+    ["With replacement: N^n = 4² = 16", "Without replacement: 4 × 3 = 12"]);
+
+  Q('medium',
+    "A sample mean is 52 while the true population mean is 50. What is the sampling error?",
+    "متوسط العينة 52 ومتوسط المجتمع الحقيقي 50. كام خطأ المعاينة؟",
+    [["+2"], ["−2"], ["102"], ["1.04"]], 0,
+    "Sampling error is the natural difference between the sample statistic and the population parameter. It is not a mistake made by the researcher.",
+    "خطأ المعاينة هو الفرق الطبيعي بين إحصاء العينة ومعلمة المجتمع. مش غلطة من الباحث.",
+    ["Sampling error = x̄ − μ", "= 52 − 50 = +2"]);
+
+  Q('medium',
+    "The table gives the area from the mean to Z. For Z = 1 the area is 0.3413. What is P(Z > 1)?",
+    "الجدول بيدّي المساحة من المتوسط لحد Z. عند Z = 1 المساحة 0.3413. كام P(Z > 1)؟",
+    [["0.1587"], ["0.3413"], ["0.6587"], ["0.8413"]], 0,
+    "The area to the right of the mean is 0.5. Remove the part between 0 and 1 and the tail is what is left. Always check whether your course table gives the area from the mean to Z or to the left of Z.",
+    "المساحة على يمين المتوسط = 0.5. بنطرح منها المساحة بين 0 و1 فيفضل الذيل. اتأكد دايماً إن جدول المادة بيدّي المساحة من المتوسط لـ Z ولا على يسار Z.",
+    ["Right half of the curve = 0.5", "P(Z > 1) = 0.5 − 0.3413 = 0.1587"]);
+
+  Q('medium',
+    "A population has μ = 100 and σ = 20. A sample of n = 64 has x̄ = 105. What is Z for the sample mean?",
+    "مجتمع فيه μ = 100 وσ = 20. عينة n = 64 متوسطها 105. كام Z لمتوسط العينة؟",
+    [["0.25"], ["1"], ["2"], ["5"]], 2,
+    "Here we divide by the standard error, not by σ. (5 / 20 = 0.25 is the mistake of using σ.) The sample mean is 2 standard errors above μ.",
+    "هنا بنقسم على الخطأ المعياري مش على σ. (5 / 20 = 0.25 هي غلطة استخدام σ.) متوسط العينة أعلى من μ بمقدار 2 خطأ معياري.",
+    ["SE = σ / √n = 20 / 8 = 2.5", "Z = (x̄ − μ) / SE = (105 − 100) / 2.5 = 2"]);
+
+  Q('medium',
+    "Which change makes a confidence interval NARROWER, if everything else stays the same?",
+    "أنهي تغيير بيخلي فترة الثقة أضيق، لو كل حاجة تانية ثابتة؟",
+    [["A larger sample size", "زيادة حجم العينة"], ["A higher confidence level", "رفع مستوى الثقة"], ["A larger standard deviation", "زيادة الانحراف المعياري"], ["A smaller sample size", "تقليل حجم العينة"]], 0,
+    "A larger n makes the standard error smaller, so the margin of error shrinks. A higher confidence level or a larger σ makes the interval wider.",
+    "زيادة n بتصغّر الخطأ المعياري، فهامش الخطأ بيقل. أما رفع مستوى الثقة أو زيادة σ فبيوسّع الفترة.");
+
+  Q('medium',
+    "You estimate a mean. σ is unknown, the population is normal and n = 12. Which critical value do you use?",
+    "بتقدّر متوسط. σ مجهول والمجتمع طبيعي وn = 12. أنهي قيمة حرجة هتستخدمها؟",
+    [["t with df = 11", "t بدرجات حرية 11"], ["t with df = 12", "t بدرجات حرية 12"], ["Z = 1.96"], ["Z = 2.58"]], 0,
+    "When σ is unknown we replace it with s and use the t-distribution with n − 1 degrees of freedom.",
+    "لما σ يبقى مجهول بنستخدم s بدلاً منه وبنستخدم توزيع t بدرجات حرية n − 1.",
+    ["σ unknown → use t and s", "df = n − 1 = 12 − 1 = 11"]);
+
+  Q('medium',
+    "For a 99% confidence level, what are α and α/2?",
+    "لمستوى ثقة 99%، كام α وα/2؟",
+    [["α = 0.01 and α/2 = 0.005"], ["α = 0.99 and α/2 = 0.495"], ["α = 0.05 and α/2 = 0.025"], ["α = 0.10 and α/2 = 0.05"]], 0,
+    "Confidence level = 1 − α. We split α in two because the interval has two tails. The matching critical value is Z = 2.58.",
+    "مستوى الثقة = 1 − α. بنقسم α على 2 لأن الفترة ليها طرفين. والقيمة الحرجة المقابلة Z = 2.58.",
+    ["α = 1 − 0.99 = 0.01", "α/2 = 0.01 / 2 = 0.005"]);
+
+  /* HARD */
+  Q('hard',
+    "A sample of n = 100 has x̄ = 80. The population σ = 15. Find the 95% confidence interval for μ.",
+    "عينة n = 100 متوسطها x̄ = 80 والانحراف المعياري للمجتمع σ = 15. أوجد فترة الثقة 95% للمتوسط μ.",
+    [["77.06 to 82.94"], ["76.13 to 83.87"], ["50.60 to 109.40"], ["78.04 to 81.96"]], 0,
+    "σ is known, so we use Z. The 76.13–83.87 option used 99% (Z = 2.58). The 50.60–109.40 option forgot to divide σ by √n.",
+    "σ معلوم فنستخدم Z. اختيار 76.13–83.87 استخدم 99% (Z = 2.58). واختيار 50.60–109.40 نسي يقسم σ على √n.",
+    ["σ known → use Z = 1.96", "SE = 15 / √100 = 1.5", "ME = 1.96 × 1.5 = 2.94", "LCL = 80 − 2.94 = 77.06", "UCL = 80 + 2.94 = 82.94"]);
+
+  Q('hard',
+    "A sample of n = 16 has x̄ = 60 and s = 8. σ is unknown and the population is normal. Using t(0.025, 15) = 2.131, find the 95% confidence interval for μ.",
+    "عينة n = 16 متوسطها 60 وs = 8. σ مجهول والمجتمع طبيعي. باستخدام t(0.025, 15) = 2.131 أوجد فترة الثقة 95% للمتوسط.",
+    [["55.74 to 64.26"], ["56.08 to 63.92"], ["55.76 to 64.24"], ["44.32 to 75.68"]], 0,
+    "56.08–63.92 used Z = 1.96 instead of t. 55.76–64.24 used df = 16 (t = 2.120) instead of n − 1 = 15. 44.32–75.68 forgot to divide by √n.",
+    "اختيار 56.08–63.92 استخدم Z = 1.96 بدل t. واختيار 55.76–64.24 استخدم df = 16 (t = 2.120) بدل n − 1 = 15. واختيار 44.32–75.68 نسي القسمة على √n.",
+    ["σ unknown → t with df = 16 − 1 = 15", "SE = s / √n = 8 / 4 = 2", "ME = 2.131 × 2 = 4.262", "LCL = 60 − 4.262 = 55.74", "UCL = 60 + 4.262 = 64.26"]);
+
+  Q('hard',
+    "In a survey of 200 students, 80 say they prefer online learning. Find the 95% confidence interval for the population proportion.",
+    "في استطلاع على 200 طالب، 80 قالوا إنهم بيفضلوا التعلم أونلاين. أوجد فترة الثقة 95% لنسبة المجتمع.",
+    [["33.21% to 46.79%"], ["31.06% to 48.94%"], ["39.76% to 40.24%"], ["33.07% to 46.93%"]], 0,
+    "We use p̂ (not π) inside the square root, because π is unknown. 31.06–48.94 used Z = 2.58 (99%). 39.76–40.24 forgot the square root. 33.07–46.93 used 0.5 instead of p̂.",
+    "بنستخدم p̂ (مش π) جوه الجذر لأن π مجهولة. اختيار 31.06–48.94 استخدم Z = 2.58 (99%). واختيار 39.76–40.24 نسي الجذر. واختيار 33.07–46.93 استخدم 0.5 بدل p̂.",
+    ["p̂ = 80 / 200 = 0.40", "SE = √(0.40 × 0.60 / 200) = √0.0012 = 0.03464", "ME = 1.96 × 0.03464 = 0.0679", "Interval = 0.40 ± 0.0679 = 0.3321 to 0.4679"]);
+
+  Q('hard',
+    "A researcher wants a 99% confidence interval for a mean with margin of error ε = 2. The population σ is about 10 and Z = 2.58. What sample size is needed?",
+    "باحث عايز فترة ثقة 99% للمتوسط بهامش خطأ ε = 2. الانحراف المعياري للمجتمع تقريباً 10 وZ = 2.58. كام حجم العينة المطلوب؟",
+    [["166"], ["167"], ["97"], ["13"]], 1,
+    "Sample size is always rounded UP, never to the nearest number. Rounding down to 166 would give a margin of error slightly larger than 2.",
+    "حجم العينة دايماً بنقرّبه لأعلى مش لأقرب رقم. لو قرّبنا لـ166 هامش الخطأ هيبقى أكبر شوية من 2.",
+    ["n = (Z × σ / ε)²", "n = (2.58 × 10 / 2)² = (12.9)²", "n = 166.41", "Round UP → n = 167"]);
+
+  Q('hard',
+    "No earlier estimate of π exists. Find the sample size for a 95% confidence level and margin of error ε = 0.03.",
+    "مفيش تقدير سابق لـ π. أوجد حجم العينة لمستوى ثقة 95% وهامش خطأ ε = 0.03.",
+    [["1067"], ["1068"], ["385"], ["4269"]], 1,
+    "With π = 0.5 the formula simplifies to Z² / 4ε². 385 is the answer for ε = 0.05, and 4269 forgot the 4. Always round up.",
+    "لما π = 0.5 القانون بيتبسط لـ Z² / 4ε². الرقم 385 هو إجابة ε = 0.05، والرقم 4269 نسي الـ4. وقرّب دايماً لأعلى.",
+    ["π unknown → use π = 0.5 (most conservative)", "n = Z² / (4 × ε²)", "n = 3.8416 / (4 × 0.0009) = 3.8416 / 0.0036", "n = 1067.1", "Round UP → n = 1068"]);
+
+  Q('hard',
+    "π = 0.40 and n = 100. A sample gives p̂ = 0.50. What is Z for the sample proportion?",
+    "π = 0.40 وn = 100. عينة طلّعت p̂ = 0.50. كام Z لنسبة العينة؟",
+    [["2.04"], ["2.00"], ["0.42"], ["0.10"]], 0,
+    "When π is known, the standard error uses π, not p̂. Using p̂ would give SE = 0.05 and Z = 2.00, which is the trap here.",
+    "لما π معلومة، الخطأ المعياري بيستخدم π مش p̂. لو استخدمنا p̂ هيطلع SE = 0.05 وZ = 2.00 وده الفخ هنا.",
+    ["Check: nπ = 40 ≥ 5 and n(1 − π) = 60 ≥ 5 ✓", "SE = √(π(1 − π) / n) = √(0.24 / 100) = 0.04899", "Z = (p̂ − π) / SE = 0.10 / 0.04899", "Z ≈ 2.04"]);
+
+  Q('hard',
+    "A 95% confidence interval for the mean age is 48.04 to 51.96. Which interpretation is correct?",
+    "فترة ثقة 95% لمتوسط العمر هي من 48.04 إلى 51.96. أنهي تفسير صح؟",
+    [["We are 95% confident, using this procedure, that μ lies in this interval", "إحنا واثقين 95% بالطريقة دي إن μ جوه الفترة دي"], ["95% of all individuals in the population are between 48.04 and 51.96", "95% من أفراد المجتمع أعمارهم بين 48.04 و51.96"], ["There is a 95% chance that x̄ is in this interval", "فيه احتمال 95% إن x̄ جوه الفترة"], ["95% of sample means are exactly 50", "95% من متوسطات العينات بالظبط 50"]], 0,
+    "The interval is about the unknown population mean μ, not about individuals. The sample mean x̄ = 50 is the centre of the interval, so it is always inside it.",
+    "الفترة بتتكلم عن متوسط المجتمع المجهول μ، مش عن الأفراد. ومتوسط العينة x̄ = 50 هو منتصف الفترة، فهو دايماً جواها.",
+    ["x̄ = (48.04 + 51.96) / 2 = 50", "ME = (51.96 − 48.04) / 2 = 1.96"]);
+
+  Q('hard',
+    "A survey has n = 40 and the population proportion is π = 0.05. Can we use the normal approximation for p̂?",
+    "استطلاع فيه n = 40 ونسبة المجتمع π = 0.05. هل ينفع نستخدم التقريب الطبيعي لـ p̂؟",
+    [["No, because nπ = 2 is less than 5", "لا، لأن nπ = 2 أقل من 5"], ["Yes, because n ≥ 30", "أيوه، لأن n ≥ 30"], ["Yes, because n(1 − π) = 38 is at least 5", "أيوه، لأن n(1 − π) = 38 على الأقل 5"], ["No, because n(1 − π) is less than 5", "لا، لأن n(1 − π) أقل من 5"]], 0,
+    "BOTH nπ ≥ 5 and n(1 − π) ≥ 5 are needed. The rule n ≥ 30 belongs to the sample mean (CLT), not to proportions.",
+    "لازم الشرطين مع بعض nπ ≥ 5 وn(1 − π) ≥ 5. قاعدة n ≥ 30 بتخص متوسط العينة (CLT) مش النسب.",
+    ["nπ = 40 × 0.05 = 2 → less than 5 ✗", "n(1 − π) = 40 × 0.95 = 38 → at least 5 ✓", "Both conditions must hold"]);
+
+  Q('hard',
+    "The population is skewed with μ = 500 and σ = 40. For n = 64, find P(x̄ < 490). The table gives the area from the mean to Z, and the area for Z = 2 is 0.4772.",
+    "المجتمع ملتوي (skewed) وμ = 500 وσ = 40. لعينة n = 64 أوجد P(x̄ < 490). الجدول بيدّي المساحة من المتوسط لـ Z، والمساحة عند Z = 2 هي 0.4772.",
+    [["0.0228"], ["0.4772"], ["0.9772"], ["0.0456"]], 0,
+    "The population is not normal, but n ≥ 30, so the CLT lets us use Z. 0.0456 is the both-tails mistake, and 0.9772 is the area to the right of 490.",
+    "المجتمع مش طبيعي لكن n ≥ 30، فنظرية الحد المركزي بتسمح باستخدام Z. الرقم 0.0456 هو غلطة الذيلين، والرقم 0.9772 هو المساحة يمين 490.",
+    ["n = 64 ≥ 30 → CLT: x̄ is approximately normal", "SE = 40 / √64 = 5", "Z = (490 − 500) / 5 = −2", "P(x̄ < 490) = 0.5 − 0.4772 = 0.0228"]);
+
+  Q('hard',
+    "A 95% confidence interval for μ (σ known) is 46 to 54. If the sample size is multiplied by 4 and everything else stays the same, what is the new margin of error?",
+    "فترة ثقة 95% لـ μ (σ معلوم) هي من 46 إلى 54. لو ضربنا حجم العينة في 4 وباقي الحاجات ثابتة، كام هامش الخطأ الجديد؟",
+    [["2"], ["1"], ["4"], ["8"]], 0,
+    "The margin of error depends on 1/√n. Quadrupling n only halves the margin. To halve it again we would need 16 times the original sample.",
+    "هامش الخطأ بيعتمد على 1/√n. ضرب n في 4 بيقسم الهامش على 2 بس. ولو عايزين نقسمه على 2 تاني محتاجين 16 ضعف العينة الأصلية.",
+    ["x̄ = (46 + 54) / 2 = 50", "Current ME = (54 − 46) / 2 = 4", "ME = Z × σ / √n → n × 4 makes √n × 2", "New ME = 4 / 2 = 2 (interval 48 to 52)"]);
+
+  /* ---------- modes ---------- */
+  var SUIT = { easy: '♣', medium: '♦', hard: '♠' };
+  var PTS = { easy: 10, medium: 20, hard: 30 };
+  var LV = { easy: { name: 'Easy', ar: 'سهل' }, medium: { name: 'Medium', ar: 'متوسط' }, hard: { name: 'Hard', ar: 'صعب' } };
+  var MODES = {
+    easy: { key: 'easy', name: 'Easy', ar: 'سهل', suit: '♣', blurb: 'Definitions and sampling methods', blurbAr: 'تعريفات وطرق المعاينة' },
+    medium: { key: 'medium', name: 'Medium', ar: 'متوسط', suit: '♦', blurb: 'One-step calculations', blurbAr: 'حسابات بخطوة واحدة' },
+    hard: { key: 'hard', name: 'Hard', ar: 'صعب', suit: '♠', blurb: 'Intervals, sample size and traps', blurbAr: 'فترات الثقة وحجم العينة والفخاخ' },
+    climb: { key: 'climb', name: 'Climb', ar: 'تصاعدي', suit: '♥', blurb: '4 easy, 4 medium, 4 hard in order', blurbAr: '4 سهل ثم 4 متوسط ثم 4 صعب' }
+  };
+
+  function buildQueue(mode) {
+    if (mode === 'climb') {
+      var out = [];
+      ['easy', 'medium', 'hard'].forEach(function (l) {
+        out = out.concat(shuffle(QS.filter(function (q) { return q.lvl === l; })).slice(0, 4));
+      });
+      return out;
+    }
+    return shuffle(QS.filter(function (q) { return q.lvl === mode; }));
+  }
+  function deckSize(m) {
+    return m.key === 'climb' ? 12 : QS.filter(function (q) { return q.lvl === m.key; }).length;
+  }
+
+  /* ---------- state ---------- */
+  var S = null;
+
+  /* ---------- home ---------- */
+  function home() {
+    S = null;
+    app.replaceChildren(
+      el('header', { class: 'hero' },
+        el('p', { class: 'kicker' }, 'Statistics · الإحصاء'),
+        el('h1', { text: 'Stats Showdown' }),
+        el('p', { class: 'sub', text: 'Chapters 1 and 2: sampling distributions, the Central Limit Theorem, estimation and confidence intervals. Choose a deck, answer the card, then read the worked explanation in English and Arabic.' }),
+        el('p', { class: 'sub ar', lang: 'ar', dir: 'rtl', text: 'أسئلة على الفصل الأول والتاني: توزيع المعاينة، نظرية الحد المركزي، التقدير وفترات الثقة. اختار مجموعة، جاوب، وبعدها اقرا الشرح بالعربي والإنجليزي.' })
+      ),
+      el('div', { class: 'decks' }, Object.keys(MODES).map(function (k) { return tile(MODES[k]); })),
+      el('p', { class: 'foot', text: QS.length + ' cards in total. On a keyboard, press A to D or 1 to 4 to answer. Streaks add bonus points.' })
+    );
+  }
+  function tile(m) {
+    var best = getBest(m.key);
+    var pts = m.key === 'climb' ? '10 to 30 pts' : PTS[m.key] + ' pts each';
+    return el('button', { class: 'tile t-' + m.key, type: 'button', 'data-suit': m.suit, onclick: function () { startGame(m.key); } },
+      el('span', { class: 'nm', text: m.name }),
+      el('span', { class: 'nm-ar', lang: 'ar', text: m.ar }),
+      el('span', { class: 'bl', text: m.blurb }),
+      el('span', { class: 'bl-ar', lang: 'ar', dir: 'rtl', text: m.blurbAr }),
+      el('span', { class: 'meta' },
+        el('span', { text: deckSize(m) + ' cards' }),
+        el('span', { text: pts }),
+        el('span', { text: best ? 'Best ' + best : 'Not played yet' }))
+    );
+  }
+
+  /* ---------- play ---------- */
+  function startGame(mode, queue) {
+    var ui = {
+      score: el('b', { text: '0' }),
+      streak: el('b', { text: '×0' }),
+      pips: el('div', { class: 'pips', role: 'img' }),
+      stage: el('div', { class: 'stage', 'aria-live': 'polite' })
+    };
+    S = { mode: mode, queue: queue || buildQueue(mode), i: 0, score: 0, streak: 0, bestStreak: 0, correct: 0, results: [], missed: [], locked: false, ui: ui, card: null, cur: null };
+    var bar = el('div', { class: 'bar' },
+      el('button', { class: 'ghost', type: 'button', onclick: function () { home(); } }, '← Table · الطاولة'),
+      el('div', { class: 'stats' },
+        el('span', null, 'Score', ui.score),
+        el('span', null, 'Streak', ui.streak))
+    );
+    app.replaceChildren(bar, ui.pips, ui.stage);
+    question();
+  }
+
+  function updateUI() {
+    S.ui.score.textContent = String(S.score);
+    S.ui.streak.textContent = '×' + S.streak;
+    S.ui.pips.replaceChildren.apply(S.ui.pips, S.queue.map(function (q, i) {
+      var st = S.results[i];
+      var cls = 'pip lvl-' + q.lvl + (st === 'r' ? ' r' : st === 'w' ? ' w' : '') + (i === S.i && !st ? ' cur' : '');
+      return el('span', { class: cls });
+    }));
+    S.ui.pips.setAttribute('aria-label', 'Card ' + Math.min(S.i + 1, S.queue.length) + ' of ' + S.queue.length);
+  }
+
+  function question() {
+    var q = S.queue[S.i];
+    S.cur = {
+      q: q,
+      order: shuffle(q.o.map(function (o, idx) { return { en: o[0], ar: o[1], ok: idx === q.a }; }))
+    };
+    S.locked = false;
+    var card = el('article', { class: 'card deal lvl-' + q.lvl, 'data-suit': SUIT[q.lvl] }, front(q));
+    S.card = card;
+    S.ui.stage.replaceChildren(card);
+    updateUI();
+  }
+
+  function front(q) {
+    return [
+      el('div', { class: 'corner' },
+        el('span', { text: 'Card ' + (S.i + 1) + ' of ' + S.queue.length }),
+        el('span', { text: SUIT[q.lvl] + ' ' + LV[q.lvl].name + ' · ' + PTS[q.lvl] + ' pts' })),
+      el('p', { class: 'q-en', text: q.q }),
+      el('p', { class: 'q-ar', lang: 'ar', dir: 'rtl', text: q.qa }),
+      el('div', { class: 'opts', role: 'group', 'aria-label': 'Answers' },
+        S.cur.order.map(function (o, idx) {
+          return el('button', { class: 'opt', type: 'button', onclick: function () { choose(idx); } },
+            el('span', { class: 'k', text: 'ABCD'.charAt(idx) }),
+            el('span', { class: 'txt' },
+              el('span', { class: 'en', text: o.en }),
+              o.ar ? el('span', { class: 'ar', lang: 'ar', dir: 'rtl', text: o.ar }) : null));
+        }))
+    ];
+  }
+
+  function choose(idx) {
+    if (!S || S.locked) return;
+    S.locked = true;
+    var q = S.cur.q;
+    var ok = S.cur.order[idx].ok;
+    var btns = Array.prototype.slice.call(S.card.querySelectorAll('.opt'));
+    btns.forEach(function (b, j) {
+      b.disabled = true;
+      var o = S.cur.order[j];
+      var k = b.querySelector('.k');
+      if (o.ok) { b.classList.add('right'); k.textContent = '✓'; }
+      else if (j === idx) { b.classList.add('wrong'); k.textContent = '✗'; }
+      else { b.classList.add('dim'); }
+    });
+    var gain = 0;
+    if (ok) {
+      S.streak++;
+      S.bestStreak = Math.max(S.bestStreak, S.streak);
+      gain = PTS[q.lvl] + Math.min((S.streak - 1) * 5, 20);
+      S.score += gain;
+      S.correct++;
+      S.results[S.i] = 'r';
+    } else {
+      S.streak = 0;
+      S.results[S.i] = 'w';
+      if (S.missed.indexOf(q) < 0) S.missed.push(q);
+    }
+    S.picked = idx; S.gain = gain; S.ok = ok;
+    updateUI();
+    setTimeout(function () { swap(showBack); }, reduce ? 0 : 750);
+  }
+
+  function swap(fn) {
+    var card = S.card;
+    if (reduce) { fn(); return; }
+    card.classList.remove('deal');
+    card.classList.add('turn-out');
+    setTimeout(function () {
+      fn();
+      card.classList.remove('turn-out');
+      card.classList.add('turn-in');
+      setTimeout(function () { card.classList.remove('turn-in'); }, 230);
+    }, 170);
+  }
+
+  function explain(q) {
+    var out = [
+      el('div', { class: 'h' }, el('span', { text: 'Why' }), el('span', { lang: 'ar', text: 'ليه' })),
+      el('p', { class: 'ex', text: q.ex }),
+      el('p', { class: 'ex ar-note', lang: 'ar', dir: 'rtl', text: q.exa })
+    ];
+    if (q.steps.length) {
+      out.push(
+        el('div', { class: 'h' }, el('span', { text: 'Step by step' }), el('span', { lang: 'ar', text: 'الحل خطوة بخطوة' })),
+        el('div', { class: 'steps' }, q.steps.map(function (s) { return el('div', { class: 'step', text: s }); }))
+      );
+    }
+    return out;
+  }
+
+  function showBack() {
+    var q = S.cur.q;
+    var last = S.i === S.queue.length - 1;
+    var right = S.cur.order.filter(function (o) { return o.ok; })[0];
+    var chosen = S.cur.order[S.picked];
+    var nextBtn = el('button', { class: 'next', type: 'button', onclick: function () { next(); } },
+      (last ? 'See results · شوف النتيجة' : 'Next card · الكارت التالي') + ' →');
+    S.card.classList.add('is-back');
+    S.card.replaceChildren(
+      el('div', { class: 'banner ' + (S.ok ? 'good' : 'bad') },
+        el('span', { text: S.ok ? 'Correct ✓' : 'Not quite ✗' }),
+        el('span', { class: 'gain' }, el('span', { lang: 'ar', text: S.ok ? 'صح' : 'غلط' }), ' · +' + S.gain + ' pts')),
+      S.ok ? null : el('p', { class: 'yours' }, 'You chose · اخترت: ', el('b', { text: chosen.en })),
+      el('div', { class: 'h' }, el('span', { text: 'Correct answer' }), el('span', { lang: 'ar', text: 'الإجابة الصح' })),
+      el('p', { class: 'ans' }, right.en, right.ar ? el('span', { class: 'ar', lang: 'ar', dir: 'rtl', text: right.ar }) : null),
+      explain(q),
+      nextBtn
+    );
+    nextBtn.focus({ preventScroll: true });
+    S.card.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  function next() {
+    if (S.i >= S.queue.length - 1) { results(); return; }
+    S.i++;
+    question();
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  /* ---------- results ---------- */
+  function results() {
+    S.locked = true;
+    var n = S.queue.length;
+    var pct = Math.round(S.correct / n * 100);
+    var isBest = false;
+    if (S.mode !== 'retry' && S.score > getBest(S.mode)) { setBest(S.mode, S.score); isBest = true; }
+    var rank = pct >= 90 ? ['Card shark', 'محترف'] : pct >= 70 ? ['Dealer', 'شاطر'] : pct >= 50 ? ['Player', 'ماشي كويس'] : ['Rookie', 'محتاج مراجعة'];
+    var label = S.mode === 'retry' ? 'Missed cards' : MODES[S.mode].name;
+    var tint = S.mode === 'retry' ? 'lvl-hard' : S.mode === 'easy' ? 'lvl-easy' : S.mode === 'medium' ? 'lvl-medium' : 'lvl-hard';
+    var mode = S.mode;
+    var missed = S.missed.slice();
+
+    var actions = [];
+    if (missed.length) {
+      actions.push(el('button', { class: 'btn', type: 'button', onclick: function () { startGame('retry', shuffle(missed)); } },
+        'Retry the ' + missed.length + ' missed card' + (missed.length > 1 ? 's' : '') + ' · جرّب الغلطات تاني'));
+    }
+    if (mode !== 'retry') {
+      actions.push(el('button', { class: 'btn' + (missed.length ? ' alt' : ''), type: 'button', onclick: function () { startGame(mode); } }, 'Play this deck again · العب تاني'));
+    }
+    actions.push(el('button', { class: 'btn alt', type: 'button', onclick: function () { home(); } }, 'Back to the table · ارجع للطاولة'));
+
+    var parts = [
+      el('div', { class: 'bar' }, el('button', { class: 'ghost', type: 'button', onclick: function () { home(); } }, '← Table · الطاولة')),
+      el('article', { class: 'card res ' + tint, style: null },
+        el('div', { class: 'corner', style: 'justify-content:center' }, el('span', { text: label + ' deck complete · خلصت المجموعة' })),
+        el('div', { class: 'big' }, String(S.score), el('small', { text: 'pts' })),
+        el('p', { class: 'rank', text: rank[0] }),
+        el('p', { class: 'rank-ar', lang: 'ar', text: rank[1] }),
+        el('p', { class: 'line', text: S.correct + ' of ' + n + ' correct · ' + pct + '%' }),
+        el('p', { class: 'line', text: 'Longest streak: ' + S.bestStreak }),
+        isBest ? el('span', { class: 'newbest', text: 'New best score' }) : null),
+      el('div', { class: 'actions' }, actions)
+    ];
+    if (missed.length) {
+      parts.push(
+        el('div', { class: 'sec-h' }, el('span', { text: 'Review the misses' }), el('span', { lang: 'ar', text: 'راجع الغلطات' })),
+        el('div', { class: 'review' }, missed.map(function (q) {
+          var right = q.o[q.a];
+          return el('details', null,
+            el('summary', { text: q.q }),
+            el('div', { class: 'inner lvl-' + q.lvl },
+              el('p', { class: 'ans' }, right[0], right[1] ? el('span', { class: 'ar', lang: 'ar', dir: 'rtl', text: right[1] }) : null),
+              explain(q)));
+        }))
+      );
+    }
+    app.replaceChildren.apply(app, parts);
+    window.scrollTo({ top: 0 });
+  }
+
+  /* ---------- keyboard ---------- */
+  document.addEventListener('keydown', function (e) {
+    if (!S || S.locked || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+    var k = e.key.toLowerCase();
+    var idx = 'abcd'.indexOf(k);
+    if (idx < 0) idx = '1234'.indexOf(k);
+    if (idx >= 0 && idx < S.cur.order.length) choose(idx);
+  });
+
+  home();
+})();
+</script>
+
+</body></html>
